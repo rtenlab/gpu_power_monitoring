@@ -23,7 +23,7 @@ sudo reboot
 bash i2cspeed.sh
 ```
 
-## installing requirements
+## Installing requirements
 ```
 sudo pip3 install -r requirements.txt
 ```
