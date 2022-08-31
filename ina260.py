@@ -1,5 +1,4 @@
 from smbus2 import SMBus
-import struct
 import time
 
 PCA_AUTOINCREMENT_OFF = 0x00

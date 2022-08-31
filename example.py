@@ -1,6 +1,4 @@
-from re import I
 import ina260
-from smbus2 import SMBus
 from datetime import datetime
 import time
 BUFF_SIZE = 20
