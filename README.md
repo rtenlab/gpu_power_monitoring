@@ -1,6 +1,10 @@
 # GPU Power Monitoring
 This project aims to implement fast GPU power monitoring system using INA260 sensors connected to a Raspberry Pi 3
 
+## Connection
+Four INA260 are used to measure two GPU powers simultaneously
+
+![connections](./assets/connections.jpg)
 ## Changeing Raspberry i2c Speed
 
 In order to achieve higher i2c speed, it is required to change the default i2c speed of Raspberry Pi from 100Mbp to 2Mbps
