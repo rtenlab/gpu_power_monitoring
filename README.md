@@ -15,7 +15,7 @@ sudo nano /boot/config.txt
 
 2. Find the line Find the line containing ```/boot/config.txt``` and add ```,i2c_arm_baudrate=2000000``` to the end of the line. The line should become like the following
 ```
-dtparam=i2c_arm=on,i2c_arm_baudrate=2000000
+dtparam=i2c_arm=on,i2c_arm_baudrate=2900000
 ```
 
 3. reboot the Raspberry Pi
