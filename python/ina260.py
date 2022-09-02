@@ -111,7 +111,7 @@ class INA260:
         wr_data = 0x0000
         wr_data = self.bitset(wr_data, RST)
         try:
-            self._write(wr_addr, wr_data)
+            self.write_reg(wr_addr, wr_data)
         except:
             status |= (1<<0)
             print("Unable to connect to the device")
@@ -138,9 +138,9 @@ class INA260:
         # Make sure to set the read-only bits!!! (CONF_ROX)
         wr_data = self.bitset(wr_data, [CONF_RO2, CONF_RO1, MODE0]) 
         wr_data = self.bitclear(wr_data, [CONF_RO0, AVG2, AVG1, AVG0, VBUSCT2, VBUSCT1, VBUSCT0, ISHCT2, ISHCT1, ISHCT0, MODE2, MODE1])
-        self._write(wr_addr, wr_data)
+        self.write_reg(wr_addr, wr_data)
         time.sleep(0.1)
-        rd_data = self._read(wr_addr)
+        rd_data = self.read_reg(wr_addr)
         if rd_data != wr_data:
             print("Device configuration failed")
             status |= (1<<3)
@@ -148,7 +148,7 @@ class INA260:
 
 
 
-    def _read(self, reg):
+    def read_reg(self, reg):
         """
         Reads a word from the device
         
@@ -160,7 +160,7 @@ class INA260:
         reg_val = self.bus.read_i2c_block_data(self.address, reg, 2)
         return reg_val[1] | (reg_val[0]<<8)
 
-    def _write(self, reg, data):
+    def write_reg(self, reg, data):
         """
         Writes a word to the device
         
@@ -175,10 +175,10 @@ class INA260:
         """
         Returns the voltage register of INA260 (Register 0x02)
         """
-        reg_voltage_raw = self._read(REG_BUS_VOLTAGE)
+        reg_voltage_raw = self.read_reg(REG_BUS_VOLTAGE)
         return reg_voltage_raw
 
-    def reg_to_volt(self, reg_volage_raw):
+    def reg_to_volt(self, reg_voltage_raw):
         """
         Converts the voltage register raw value to Volt
         Parameters:
@@ -186,14 +186,14 @@ class INA260:
 
         Returns the voltage in Volt
         """
-        voltage = reg_volage_raw*0.00125 # 1.25mv/bit
+        voltage = reg_voltage_raw*0.00125 # 1.25mv/bit
         return voltage
 
     def current_reg(self):
         """
         Returns the current register of INA260 (Register 0x01)
         """
-        reg_current_raw = self._read(REG_CURRENT)
+        reg_current_raw = self.read_reg(REG_CURRENT)
         return reg_current_raw
 
     def reg_to_amp(self, reg_current_raw):
@@ -210,10 +210,10 @@ class INA260:
         else:
             current = reg_current_raw
             
-        current *=0.00125 # 1.25mv/bit
+        current *=0.00125 # 1.25mA/bit
         return current
     def power_reg(self):
-        reg_power_raw = self._read(REG_POWER)
+        reg_power_raw = self.read_reg(REG_POWER)
         return reg_power_raw
 
     def reg_to_watt(self, reg_power_raw):
@@ -231,14 +231,14 @@ class INA260:
         """
         Returns the manufacturer ID - it should always be 0x5449
         """
-        man_id = self._read(REG_MANUFACTURER_ID)
+        man_id = self.read_reg(REG_MANUFACTURER_ID)
         return man_id
 
     def die_id(self):
         """
         Returns the die ID register - it should be 0x2270.
         """
-        die_id = self._read(REG_DIE_ID)
+        die_id = self.read_reg(REG_DIE_ID)
         return die_id
 
     def __del__(self):
