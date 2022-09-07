@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     __u16 current_buffer[NUM_SAMPLES*NUM_SENSORS];
     int fd[NUM_SENSORS];
     __u8 reachable[NUM_SENSORS];
-    float current_values[NUM_SAMPLES];
+    int current_values[NUM_SAMPLES];
     __u8 s=0;
 
     for (s=0; s<NUM_SENSORS; s++)
@@ -66,13 +66,15 @@ int main(int argc, char **argv)
     for (int i =0; i<(NUM_SAMPLES-1); i++)
     {
         int time_diff = time_buffer[i+1] - time_buffer[i];
-        float current_value = reg_to_amp(current_buffer[i]);
-        printf("Sampling Time: %d \n", time_diff);
+        int current_value = reg_to_amp(current_buffer[i]);
+        printf("Sampling Time: %d us\n", time_diff);
         for (s=0; s<NUM_SENSORS; s++)
         
         {
             if (reachable[s]==1)
-                printf("Sensor %d Current: %f A \n", s, reg_to_amp(current_buffer[i*NUM_SENSORS+s]));
+            {
+                printf("Sensor %d Current: %d uA \n", s, reg_to_amp(current_buffer[i*NUM_SENSORS+s]));
+            }
         }
 
     }
