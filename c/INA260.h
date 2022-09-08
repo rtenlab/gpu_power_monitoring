@@ -73,11 +73,11 @@ __u16 bitset(__u16 number, __u8 i);
 __u16 bitclear(__u16 number, __u8 i);
 __s8 ina260_config(int fd);
 __u16 voltage_read(int fd);
-__s32 reg_to_volt(__u16 reg_voltage_raw);
+__s16 reg_to_volt(__u16 reg_voltage_raw);
 __u16 current_read(int fd);
-__s32 reg_to_amp(__u16 reg_current_raw);
+__s16 reg_to_amp(__u16 reg_current_raw);
 __u16 power_read(int fd);
-__s32 reg_to_watt(__u16 reg_power_raw);
+__u16 reg_to_watt(__u16 reg_power_raw);
 
 
 

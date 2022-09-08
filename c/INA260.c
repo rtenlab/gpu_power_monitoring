@@ -6,6 +6,7 @@
 #include <linux/i2c.h>
 #include <sys/ioctl.h>
 #include <stdio.h>
+#include <math.h>
 #define VERBOSE 0
 
 
@@ -163,16 +164,16 @@ __u16 voltage_read(int fd)
 	return read_reg(fd, REG_BUS_VOLTAGE);
 }
 
-__s32 reg_to_volt(__u16 reg_voltage_raw)
+__s16 reg_to_volt(__u16 reg_voltage_raw)
 {
 	/*
-	Converts the voltage register raw value to Micro Volts
+	Converts the voltage register raw value to Millivolts
 	Parameters:
 		reg_voltage_raw: raw value read from voltage register of INA260
 
-	Returns the voltage in micro Volts
+	Returns the voltage in millivolts
 	*/
-	return ((__s32)reg_voltage_raw)*1250;  //   1.25mv/bit
+	return round(((__s16)reg_voltage_raw)*1.25);  //   1.25mv/bit
 }
 
 __u16 current_read(int fd)
@@ -181,23 +182,23 @@ __u16 current_read(int fd)
 	return read_reg(fd, REG_CURRENT);
 }
 
-__s32 reg_to_amp(__u16 reg_current_raw)
+__s16 reg_to_amp(__u16 reg_current_raw)
 {
 	/*
-	Converts the current register raw value to Micro Ampers
+	Converts the current register raw value to Miillimpers
 	
 	Parameters:
 		reg_current_raw: raw value read from current register of INA260
 
-	Returns the Current in micro Ampers
+	Returns the Current in milliampers
 	*/
-	__s32 current;
+	__s16 current;
 	if (reg_current_raw & (1 << 15)) //Two's complement
-		current = (__s32)reg_current_raw - 65535;
+		current = reg_current_raw - 65535;
 	else
-		current = (__s32)reg_current_raw;
+		current = reg_current_raw;
 
-	return (current*1250);  //   1.25mA/bit
+	return round((current*1.25));  //   1.25mA/bit
 }
 
 __u16 power_read(int fd)
@@ -206,16 +207,16 @@ __u16 power_read(int fd)
 	return read_reg(fd, REG_POWER);
 }
 
-__s32 reg_to_watt(__u16 reg_power_raw)
+__u16 reg_to_watt(__u16 reg_power_raw)
 {
 	/*
-	Converts the power register raw value to Micro Watts
+	Converts the power register raw value to Milliwatts
 	Parameters:
 		reg_power_raw: raw value read from power register of INA260
 
-	Returns the Power in micro Watts
+	Returns the Power in milliwatts
 	*/
-	return ((__s32)reg_power_raw)*10000;  //   10mW/bit
+	return reg_power_raw*10;  //   10mW/bit
 }
 
 
