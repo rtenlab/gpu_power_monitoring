@@ -8,10 +8,12 @@
 #include <time.h>
 #include<signal.h>
 
-u_int8_t finish_reading = 0;
+u_int8_t user_interrupt = 0;
+u_int8_t measurement_timeout = 0;
 __u8 SENSOR_ADDRS[] = {0x40, 0x41, 0x44, 0x45};
 #define MEASUREMENT_DELAY_us 130 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
-#define MEASUREMENT_TIME_us 150 // approximate time between measurements in reality (used to calculate number of samples)
+#define MEASUREMENT_TIME_us 130 // approximate time between measurements in reality (used to calculate number of samples)
+#define RETRY_NUM 20 // Number of retries to configure a sensor
 
 // unit conversion code, just to make the conversion more obvious and self-documenting
 static long long SecondsToMicros(long secs) {return secs*1000000;}
@@ -24,13 +26,18 @@ static long long getCurrentTimeMicros()
    return (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) ? (SecondsToMicros(ts.tv_sec)+NanosToMicros(ts.tv_nsec)) : 0;
 }
 
-void sig_handler(int signum){
-    finish_reading = 1;
+void usr_sig_handler(int signum){
+    user_interrupt = 1;
+}
+
+void time_sig_handler(int signum){
+    measurement_timeout = 1;
 }
 
 int main(int argc, char **argv)
 {
-    signal(SIGUSR1,sig_handler); // Registering signal handler
+    signal(SIGUSR1,usr_sig_handler); // Registering signal handler
+    signal(SIGALRM,time_sig_handler); // Registering signal handler
 
     int c;
     float meas_time = 0.001;
@@ -105,15 +112,21 @@ int main(int argc, char **argv)
     for (s=0; s<num_sensors; s++)
     {
         fd[s] = i2c_init(SENSOR_ADDRS[s]);
-        if (ina260_config(fd[s])==0)
+        reachable[s] = 0;
+        for (int r=0; r<RETRY_NUM; r++)
         {
-            printf("Sensor %d succesfully configured.\n", s);
-            reachable[s]=1;
+            sleep(0.1);
+            if (ina260_config(fd[s])==0)
+            {
+                printf("Sensor %d succesfully configured.\n", s);
+                reachable[s]=1;
+                break;
+            }
         }
-        else
+
+        if (reachable[s]==0)
         {
             printf("Sensor %d is unreachable.\n", s);
-            reachable[s]=0;
         }
 
     }
@@ -127,6 +140,7 @@ int main(int argc, char **argv)
     meas_starting_timestamp = getCurrentTimeMicros();
     nextExecTimeMicros = meas_starting_timestamp + MEASUREMENT_DELAY_us;
     printf("Measruement started. Please wait...\n");
+    alarm(meas_time+1);
     long captured_samples = num_samples;
     for (long i =0; i<num_samples; i++)
     {
@@ -149,12 +163,19 @@ int main(int argc, char **argv)
             if (reachable[s]==1)
                 current_buffer[i*num_sensors+s] =current_read(fd[s]);
         }
-        if (finish_reading==1)
+        if (user_interrupt==1)
         {
             printf("Program was interrupted by user\n");
             captured_samples = i;
             break;
         }
+        if (measurement_timeout==1)
+        {
+            printf("Measurement time has been reached.\n");
+            captured_samples = i;
+            break;
+        }
+
     }
     // Printing out measurements as well as time takes for each measurement
     /*
@@ -185,36 +206,50 @@ int main(int argc, char **argv)
     }
 
     // Writing Data to file
-    printf("Measruement is done. Writing to file... Please wait!\n");
+    printf("Measruement is done. Writing to file...\n");
+    struct timespec w_st, w_et;// Writing to file starting and ending time
+    clock_gettime(CLOCK_REALTIME, &w_st);
 
     FILE *fpt;
+    fpt = fopen(filename, "w+");
+    fprintf(fpt,"Date,Time of the day (us)");
+    for (s=0; s<num_sensors; s++)
+
+        if (reachable[s]==1)
+            fprintf(fpt,",Sensor %#02X current (mA)",SENSOR_ADDRS[s]);
+    
+    fprintf(fpt,"\n");
+    long long time_of_day_us;
+    struct timespec timestamp;
     struct tm *st = localtime(&starting_date_time.tv_sec);
 
-    fpt = fopen(filename, "w+");
-    fprintf(fpt,"Sample,");
-    for (s=0; s<num_sensors; s++)
-        if (reachable[s]==1)
-            fprintf(fpt,"Sensor %#02X current (mA),",SENSOR_ADDRS[s]);
-    fprintf(fpt,"Sampling Time Offset (us),");
-    fprintf(fpt,"Starting Time: %02d/%02d/%02d %02d:%02d:%02d.%ld,", (st->tm_mon + 1), st->tm_mday, (1900+st->tm_year), st->tm_hour, st->tm_min, st->tm_sec, starting_date_time.tv_nsec/1000);
-    fprintf(fpt,"%ld, %ld\n", starting_date_time.tv_sec, starting_date_time.tv_nsec);
-    
-
-     for (long i =0; i<captured_samples; i++)
+    for (long i =0; i<captured_samples; i++)
     {
-        fprintf(fpt,"%ld,",i);
+        timestamp.tv_sec = starting_date_time.tv_sec + (time_offset_buffer[i]*1000 + starting_date_time.tv_nsec)/1000000000;
+        struct tm *ct = localtime(&timestamp.tv_sec);
+
+        // Writing date (year, month, and day)
+        fprintf(fpt,"%02d/%02d/%04d,",(ct->tm_mon+1), ct->tm_mday, (ct->tm_year+1900));
+        
+        // Writing time of the day in microseconds (number of microseconds past since 12:00AM)
+        time_of_day_us = ((long long)(st->tm_hour)*3600 + (long long)(st->tm_min)*60 + (long long)(st->tm_sec))*1000000 + (long long)time_offset_buffer[i] + starting_date_time.tv_nsec/1000;
+        fprintf(fpt,"%lld",time_of_day_us);
+
+        // Writing Sensor Data
         for (s=0; s<num_sensors; s++)
         {
             if (reachable[s]==1)
             {
-                fprintf(fpt,"%d,",reg_to_amp(current_buffer[i*num_sensors+s]));
+                fprintf(fpt,",%d",reg_to_amp(current_buffer[i*num_sensors+s]));
             }
         }
-        fprintf(fpt,"%u\n",time_offset_buffer[i]);
-    }
-   
-    printf("Writing measruement to file is succesfully finished!\n");
+        fprintf(fpt,"\n");
+    }    
     fclose(fpt);
+
+    clock_gettime(CLOCK_REALTIME, &w_et);
+    printf("Writing measruement to file is succesfully finished!\n");
+    printf("It took %ld seconds to write to file.\n",(w_et.tv_sec-w_st.tv_sec));
 
 
 
