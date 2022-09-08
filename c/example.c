@@ -6,7 +6,9 @@
 #include <math.h>
 
 #include <time.h>
+#include<signal.h>
 
+u_int8_t finish_reading = 0;
 __u8 SENSOR_ADDRS[] = {0x40, 0x41, 0x44, 0x45};
 #define MEASUREMENT_DELAY_us 130 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
 #define MEASUREMENT_TIME_us 150 // approximate time between measurements in reality (used to calculate number of samples)
@@ -22,14 +24,19 @@ static long long getCurrentTimeMicros()
    return (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) ? (SecondsToMicros(ts.tv_sec)+NanosToMicros(ts.tv_nsec)) : 0;
 }
 
-char *filename = "current_measurements.csv";
+void sig_handler(int signum){
+    finish_reading = 1;
+}
 
 int main(int argc, char **argv)
 {
+    signal(SIGUSR1,sig_handler); // Registering signal handler
 
     int c;
     float meas_time = 0.001;
     u_int8_t num_sensors = 1;
+    char *filename = "current_measurements.csv";
+
 
     // Parsing the input arguments
     while ((c = getopt (argc, argv, "n:t:f:")) != -1)
@@ -120,7 +127,8 @@ int main(int argc, char **argv)
     meas_starting_timestamp = getCurrentTimeMicros();
     nextExecTimeMicros = meas_starting_timestamp + MEASUREMENT_DELAY_us;
     printf("Measruement started. Please wait...\n");
-    for (int i =0; i<num_samples; i++)
+    long captured_samples = num_samples;
+    for (long i =0; i<num_samples; i++)
     {
         // Making sure there is at least MEASUREMENT_DELAY_us microseconds between measurments
         microsToSleepFor = nextExecTimeMicros - getCurrentTimeMicros();
@@ -140,6 +148,12 @@ int main(int argc, char **argv)
         {
             if (reachable[s]==1)
                 current_buffer[i*num_sensors+s] =current_read(fd[s]);
+        }
+        if (finish_reading==1)
+        {
+            printf("Program was interrupted by user\n");
+            captured_samples = i;
+            break;
         }
     }
     // Printing out measurements as well as time takes for each measurement
@@ -186,7 +200,7 @@ int main(int argc, char **argv)
     fprintf(fpt,"%ld, %ld\n", starting_date_time.tv_sec, starting_date_time.tv_nsec);
     
 
-     for (long i =0; i<num_samples; i++)
+     for (long i =0; i<captured_samples; i++)
     {
         fprintf(fpt,"%ld,",i);
         for (s=0; s<num_sensors; s++)
