@@ -11,11 +11,13 @@ make clean
 ```
 To run the example code after making:
 ```
-./example -t SIMULATION_TIME_s -n NUMBER_OF_SENSORS
+./example -t SIMULATION_TIME_s -n NUMBER_OF_SENSORS -f FILE_NAME
 ```
-Default values for SIMULATION_TIME_s and NUMBER_OF_SENSORS are 0.001 and 1, respectively. For example to run the code for 3 sensors and simulation time of about 60 seconds:
+
+Default values for ```SIMULATION_TIME_s``` , ```NUMBER_OF_SENSORS```, and ```FILE_NAME``` are 0.001 and 1, and current_measurements.csv respectively. For example to run the code for 3 sensors and simulation time of about 60 seconds and save in test.csv file:
+
 ```
-./example -t 60 -n 3
+./example -t 60 -n 3 -f test.csv
 ```
 
 

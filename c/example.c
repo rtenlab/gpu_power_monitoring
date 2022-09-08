@@ -7,7 +7,6 @@
 
 #include <time.h>
 
-#define NUM_SAMPLES 20
 __u8 SENSOR_ADDRS[] = {0x40, 0x41, 0x44, 0x45};
 #define MEASUREMENT_DELAY_us 130 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
 #define MEASUREMENT_TIME_us 150 // approximate time between measurements in reality (used to calculate number of samples)
@@ -23,6 +22,7 @@ static long long getCurrentTimeMicros()
    return (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) ? (SecondsToMicros(ts.tv_sec)+NanosToMicros(ts.tv_nsec)) : 0;
 }
 
+char *filename = "current_measurements.csv";
 
 int main(int argc, char **argv)
 {
@@ -32,7 +32,7 @@ int main(int argc, char **argv)
     u_int8_t num_sensors = 1;
 
     // Parsing the input arguments
-    while ((c = getopt (argc, argv, "n:t:")) != -1)
+    while ((c = getopt (argc, argv, "n:t:f:")) != -1)
     {
         switch (c)
             {
@@ -51,6 +51,9 @@ int main(int argc, char **argv)
                     printf("Addresses are not defined in the code properly");
                     return 1;
                 }
+                break;
+            case 'f':
+                filename = optarg;
                 break;
             case '?': 
                 if (optopt == 't' || optopt == 'n')
@@ -173,13 +176,13 @@ int main(int argc, char **argv)
     FILE *fpt;
     struct tm *st = localtime(&starting_date_time.tv_sec);
 
-    fpt = fopen("current_measurements.csv", "w+");
+    fpt = fopen(filename, "w+");
     fprintf(fpt,"Sample,");
     for (s=0; s<num_sensors; s++)
         if (reachable[s]==1)
             fprintf(fpt,"Sensor %#02X current (mA),",SENSOR_ADDRS[s]);
     fprintf(fpt,"Sampling Time Offset (us),");
-    fprintf(fpt,"Starting Time: %02d/%02d/%02d %02d:%02d:%02d.%ld,", st->tm_mon, st->tm_mday, (1900+st->tm_year), st->tm_hour, st->tm_min, st->tm_sec, starting_date_time.tv_nsec/1000);
+    fprintf(fpt,"Starting Time: %02d/%02d/%02d %02d:%02d:%02d.%ld,", (st->tm_mon + 1), st->tm_mday, (1900+st->tm_year), st->tm_hour, st->tm_min, st->tm_sec, starting_date_time.tv_nsec/1000);
     fprintf(fpt,"%ld, %ld\n", starting_date_time.tv_sec, starting_date_time.tv_nsec);
     
 
