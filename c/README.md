@@ -23,6 +23,6 @@ Default values for ```SIMULATION_TIME_s``` , ```NUMBER_OF_SENSORS```, and ```FIL
 The user can interrupt the sensing by raising the ```SIGUSR1``` signal. In this case, the program stops the sensing and writes all the received data to the file. An example command in terminal to safely stop the program while the program is running
 
 ```
-kill -s SIGUSR1 PID_OF_THE_PROGRAM
+pkill -SIGUSR1 example
 ```
 

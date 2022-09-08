@@ -213,7 +213,7 @@ int main(int argc, char **argv)
         fprintf(fpt,"%u\n",time_offset_buffer[i]);
     }
    
-    printf("Measruement to file succesfully finished!\n");
+    printf("Writing measruement to file is succesfully finished!\n");
     fclose(fpt);
 
 
