@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     float meas_time = 0.001;
     u_int8_t num_sensors = 1;
     char *filename = "current_measurements.csv";
-
+    printf("Example: %d\n",0xF7FF );
 
     // Parsing the input arguments
     while ((c = getopt (argc, argv, "n:t:f:")) != -1)
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
                 meas_time = atof(optarg); // Measurement time in seconds (by default it is set to 0.1 seconds)
                 if (meas_time > 1800)
                 {
-                    printf("Simulation time is set for too long");
+                    printf("Simulation time is set for too long\n");
                     return 1;
                 }
                 break;
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
                 num_sensors = round(atoi(optarg)); // Number of sensors used for measurements (by default it is set to 1)
                 if (num_sensors > sizeof(SENSOR_ADDRS)/sizeof(SENSOR_ADDRS[0]))
                 {
-                    printf("Addresses are not defined in the code properly");
+                    printf("Addresses are not defined in the code properly\n");
                     return 1;
                 }
                 break;
@@ -94,10 +94,21 @@ int main(int argc, char **argv)
     // with reference to starting time of entire measeasurement  
     __u32 *time_offset_buffer;
     time_offset_buffer = (__u32*) malloc(num_samples * sizeof(__u32));
+    if (time_offset_buffer==NULL)
+        {
+            printf("Could not allocate memory for time_offset_buffer\n");
+            return 1;
+        }
 
     // Definining the array that contains measured electricity current samples (register values)  
     __u16 *current_buffer;
     current_buffer = (__u16*) malloc(num_samples * num_sensors *sizeof(__u16));
+
+    if (time_offset_buffer==NULL)
+        {
+            printf("Could not allocate memory for current_buffer\n");
+            return 1;
+        }
 
     // File ID of each sensor
     int *fd;
@@ -222,17 +233,19 @@ int main(int argc, char **argv)
     long long time_of_day_us;
     struct timespec timestamp;
     struct tm *st = localtime(&starting_date_time.tv_sec);
+    long long starting_time_of_day_us = 0;
+    starting_time_of_day_us = (((long long)(st->tm_hour))*3600 + ((long long)(st->tm_min))*60 + ((long long)(st->tm_sec)))*1000000 + (long long) starting_date_time.tv_nsec/1000;
 
     for (long i =0; i<captured_samples; i++)
     {
-        timestamp.tv_sec = starting_date_time.tv_sec + (time_offset_buffer[i]*1000 + starting_date_time.tv_nsec)/1000000000;
+        timestamp.tv_sec = starting_date_time.tv_sec + (time_offset_buffer[i] + starting_date_time.tv_nsec/1000)/1000000;
         struct tm *ct = localtime(&timestamp.tv_sec);
 
         // Writing date (year, month, and day)
         fprintf(fpt,"%02d/%02d/%04d,",(ct->tm_mon+1), ct->tm_mday, (ct->tm_year+1900));
         
         // Writing time of the day in microseconds (number of microseconds past since 12:00AM)
-        time_of_day_us = ((long long)(st->tm_hour)*3600 + (long long)(st->tm_min)*60 + (long long)(st->tm_sec))*1000000 + (long long)time_offset_buffer[i] + starting_date_time.tv_nsec/1000;
+        time_of_day_us = starting_time_of_day_us + (long long)time_offset_buffer[i];
         fprintf(fpt,"%lld",time_of_day_us);
 
         // Writing Sensor Data
@@ -250,8 +263,6 @@ int main(int argc, char **argv)
     clock_gettime(CLOCK_REALTIME, &w_et);
     printf("Writing measruement to file is succesfully finished!\n");
     printf("It took %ld seconds to write to file.\n",(w_et.tv_sec-w_st.tv_sec));
-
-
 
     free(time_offset_buffer);
     free(current_buffer);

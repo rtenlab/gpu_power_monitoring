@@ -192,11 +192,12 @@ __s16 reg_to_amp(__u16 reg_current_raw)
 
 	Returns the Current in milliampers
 	*/
+	__u32 current_raw_32 = reg_current_raw;
 	__s16 current;
-	if (reg_current_raw & (1 << 15)) //Two's complement
-		current = reg_current_raw - 65535;
+	if (current_raw_32 & (1 << 15)) //Two's complement
+		current = (current_raw_32 - 65535);
 	else
-		current = reg_current_raw;
+		current = current_raw_32;
 
 	return round((current*1.25));  //   1.25mA/bit
 }
