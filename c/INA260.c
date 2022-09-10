@@ -105,6 +105,7 @@ __s8 ina260_config(int fd)
 	wr_data = bitset(wr_data, CONF_RO2);
 	wr_data = bitset(wr_data, CONF_RO1);
 	wr_data = bitset(wr_data, MODE0);
+	wr_data = bitset(wr_data, MODE2);
 	write_reg(fd, wr_addr, wr_data);
 	sleep(0.1);
 	__u16 rd_data = read_reg(fd, wr_addr);
@@ -156,6 +157,7 @@ void write_reg(int fd, __u8 address, __u16 data)
 		if (VERBOSE) printf("Error in writing!\n");
 		close(fd);
 	}
+	if (VERBOSE) printf("Written address: %02X \t   Written data: %04X\n",address,data);
 }
 
 __u16 voltage_read(int fd)

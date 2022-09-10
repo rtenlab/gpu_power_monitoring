@@ -11,8 +11,8 @@
 u_int8_t user_interrupt = 0;
 u_int8_t measurement_timeout = 0;
 __u8 SENSOR_ADDRS[] = {0x40, 0x41, 0x44, 0x45};
-#define MEASUREMENT_DELAY_us 130 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
-#define MEASUREMENT_TIME_us 130 // approximate time between measurements in reality (used to calculate number of samples)
+#define MEASUREMENT_DELAY_us 140 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
+#define MEASUREMENT_TIME_us 140 // approximate time between measurements in reality (used to calculate number of samples)
 #define RETRY_NUM 20 // Number of retries to configure a sensor
 
 // unit conversion code, just to make the conversion more obvious and self-documenting
@@ -43,7 +43,6 @@ int main(int argc, char **argv)
     float meas_time = 0.001;
     u_int8_t num_sensors = 1;
     char *filename = "current_measurements.csv";
-    printf("Example: %d\n",0xF7FF );
 
     // Parsing the input arguments
     while ((c = getopt (argc, argv, "n:t:f:")) != -1)
@@ -102,7 +101,7 @@ int main(int argc, char **argv)
 
     // Definining the array that contains measured electricity current samples (register values)  
     __u16 *current_buffer;
-    current_buffer = (__u16*) malloc(num_samples * num_sensors *sizeof(__u16));
+    current_buffer = (__u16*) malloc(num_samples * ((long)num_sensors) *sizeof(__u16));
 
     if (time_offset_buffer==NULL)
         {
@@ -141,6 +140,10 @@ int main(int argc, char **argv)
         }
 
     }
+    // fd[1]=fd[0];
+    // fd[2]=fd[0];
+    // reachable[1]=reachable[0];
+    // reachable[2]=reachable[0];
 
     long long nextExecTimeMicros; // Holds the next time to execute measurements
     long long microsToSleepFor;
@@ -172,7 +175,9 @@ int main(int argc, char **argv)
         for (s=0; s<num_sensors; s++)
         {
             if (reachable[s]==1)
-                current_buffer[i*num_sensors+s] =current_read(fd[s]);
+            {                
+                current_buffer[i*((long)num_sensors)+(long)s] = current_read(fd[s]);
+            }
         }
         if (user_interrupt==1)
         {
@@ -190,7 +195,7 @@ int main(int argc, char **argv)
     }
     // Printing out measurements as well as time takes for each measurement
     /*
-    for (int i =0; i<num_samples; i++)
+    for (int i =0; i<captured_samples; i++)
     {
         int time_diff;
         if (i==0)
@@ -198,14 +203,19 @@ int main(int argc, char **argv)
         else
             time_diff = time_offset_buffer[i]-time_offset_buffer[i-1];
 
-        int current_value = reg_to_amp(current_buffer[i]);
-        printf("Sampling Time: %d us\n", time_diff);
-        for (s=0; s<num_sensors; s++)
-        {
-            if (reachable[s]==1)
+        if (i%256 == 0)
             {
-                printf("Sensor %d Current: %d mA \n", s, reg_to_amp(current_buffer[i*num_sensors+s]));
+            printf("Sampling Time: %d us\n", time_diff);
+
+            for (s=0; s<num_sensors; s++)
+            {
+                if (reachable[s]==1)
+                {
+
+                    printf("Sensor %d Current: %d mA \n", s, reg_to_amp(current_buffer[i*((long)num_sensors)+((long)s)]));
+                }
             }
+
         }
 
     }
@@ -213,7 +223,9 @@ int main(int argc, char **argv)
     for (s=0; s<num_sensors; s++)
     {
         if (reachable[s]==1)
+        {
             close(fd[s]);
+        }
     }
 
     // Writing Data to file
@@ -253,7 +265,7 @@ int main(int argc, char **argv)
         {
             if (reachable[s]==1)
             {
-                fprintf(fpt,",%d",reg_to_amp(current_buffer[i*num_sensors+s]));
+                fprintf(fpt,",%d",reg_to_amp(current_buffer[i*((long)num_sensors)+((long)s)]));                
             }
         }
         fprintf(fpt,"\n");

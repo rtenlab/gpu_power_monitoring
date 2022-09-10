@@ -136,8 +136,8 @@ class INA260:
         wr_data = 0x0000
         # Check Datasheet of INA260 for each of the bits
         # Make sure to set the read-only bits!!! (CONF_ROX)
-        wr_data = self.bitset(wr_data, [CONF_RO2, CONF_RO1, MODE0]) 
-        wr_data = self.bitclear(wr_data, [CONF_RO0, AVG2, AVG1, AVG0, VBUSCT2, VBUSCT1, VBUSCT0, ISHCT2, ISHCT1, ISHCT0, MODE2, MODE1])
+        wr_data = self.bitset(wr_data, [CONF_RO2, CONF_RO1, MODE2, MODE0]) 
+        # wr_data = self.bitclear(wr_data, [CONF_RO0, AVG2, AVG1, AVG0, VBUSCT2, VBUSCT1, VBUSCT0, ISHCT2, ISHCT1, ISHCT0, MODE1])
         self.write_reg(wr_addr, wr_data)
         time.sleep(0.1)
         rd_data = self.read_reg(wr_addr)
