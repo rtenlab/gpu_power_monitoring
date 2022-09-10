@@ -13,7 +13,7 @@ u_int8_t measurement_timeout = 0;
 __u8 SENSOR_ADDRS[] = {0x40, 0x41, 0x44, 0x45};
 #define MEASUREMENT_DELAY_us 140 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
 #define MEASUREMENT_TIME_us 140 // approximate time between measurements in reality (used to calculate number of samples)
-#define RETRY_NUM 20 // Number of retries to configure a sensor
+#define RETRY_NUM 1000 // Number of retries to configure a sensor
 
 // unit conversion code, just to make the conversion more obvious and self-documenting
 static long long SecondsToMicros(long secs) {return secs*1000000;}
@@ -125,13 +125,13 @@ int main(int argc, char **argv)
         reachable[s] = 0;
         for (int r=0; r<RETRY_NUM; r++)
         {
-            sleep(0.1);
             if (ina260_config(fd[s])==0)
             {
                 printf("Sensor %d succesfully configured.\n", s);
                 reachable[s]=1;
                 break;
             }
+            sleep(0.5);
         }
 
         if (reachable[s]==0)
@@ -140,10 +140,10 @@ int main(int argc, char **argv)
         }
 
     }
-    // fd[1]=fd[0];
-    // fd[2]=fd[0];
-    // reachable[1]=reachable[0];
-    // reachable[2]=reachable[0];
+    fd[1]=fd[0];
+    fd[2]=fd[0];
+    reachable[1]=reachable[0];
+    reachable[2]=reachable[0];
 
     long long nextExecTimeMicros; // Holds the next time to execute measurements
     long long microsToSleepFor;
