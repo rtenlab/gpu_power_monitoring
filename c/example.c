@@ -131,7 +131,7 @@ int main(int argc, char **argv)
                 reachable[s]=1;
                 break;
             }
-            sleep(0.5);
+            usleep(500000);
         }
 
         if (reachable[s]==0)
@@ -140,10 +140,10 @@ int main(int argc, char **argv)
         }
 
     }
-    fd[1]=fd[0];
-    fd[2]=fd[0];
-    reachable[1]=reachable[0];
-    reachable[2]=reachable[0];
+    // fd[1]=fd[0];
+    // fd[2]=fd[0];
+    // reachable[1]=reachable[0];
+    // reachable[2]=reachable[0];
 
     long long nextExecTimeMicros; // Holds the next time to execute measurements
     long long microsToSleepFor;
