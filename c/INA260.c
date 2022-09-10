@@ -79,7 +79,7 @@ __s8 ina260_config(int fd)
 	wr_data = bitset(wr_data, RST);
 	write_reg(fd, wr_addr, wr_data);
 
-	sleep(0.1);
+	usleep(20);
 
 	// Check if device register reading is working
 	__u16 man_id = manufacturer_id(fd);
@@ -107,7 +107,7 @@ __s8 ina260_config(int fd)
 	wr_data = bitset(wr_data, MODE0);
 	wr_data = bitset(wr_data, MODE2);
 	write_reg(fd, wr_addr, wr_data);
-	sleep(0.1);
+	usleep(20);
 	__u16 rd_data = read_reg(fd, wr_addr);
 	if (rd_data != wr_data)
 	{

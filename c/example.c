@@ -131,7 +131,7 @@ int main(int argc, char **argv)
                 reachable[s]=1;
                 break;
             }
-            usleep(500000);
+            usleep(5000);
         }
 
         if (reachable[s]==0)
