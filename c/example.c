@@ -11,8 +11,8 @@
 u_int8_t user_interrupt = 0;
 u_int8_t measurement_timeout = 0;
 __u8 SENSOR_ADDRS[] = {0x40, 0x41, 0x44, 0x45};
-#define MEASUREMENT_DELAY_us 140 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
-#define MEASUREMENT_TIME_us 140 // approximate time between measurements in reality (used to calculate number of samples)
+// #define MEASUREMENT_DELAY_us 140 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
+// #define MEASUREMENT_TIME_us 140 // approximate time between measurements in reality (used to calculate number of samples)
 #define RETRY_NUM 5 // Number of retries to configure a sensor
 
 // unit conversion code, just to make the conversion more obvious and self-documenting
@@ -148,7 +148,8 @@ int main(int argc, char **argv)
     printf("Sampling time is set to %d microseconds. \n",usr_sampling_time);
 
     // Number of samples required for the measurements.
-    long num_samples = round((meas_time*1000000)/MEASUREMENT_TIME_us);
+    long measurement_time_us = usr_sampling_time;
+    long num_samples = round((meas_time*1000000)/measurement_time_us);
 
     // Definining the array that contains time took to measure each sample in microseconds
     // with reference to starting time of entire measeasurement  
@@ -227,13 +228,13 @@ int main(int argc, char **argv)
     clock_gettime(CLOCK_REALTIME, &starting_date_time);
 
     meas_starting_timestamp = getCurrentTimeMicros();
-    nextExecTimeMicros = meas_starting_timestamp + MEASUREMENT_DELAY_us;
+    nextExecTimeMicros = meas_starting_timestamp + measurement_time_us;
     printf("Measruement started. Please wait...\n");
     alarm(meas_time+1);
     long captured_samples = num_samples;
     for (long i =0; i<num_samples; i++)
     {
-        // Making sure there is at least MEASUREMENT_DELAY_us microseconds between measurments
+        // Making sure there is at least measurement_time_us microseconds between measurments
         microsToSleepFor = nextExecTimeMicros - getCurrentTimeMicros();
         while(microsToSleepFor>0 && i!=0) // Busy waiting sleep works more precise than using usleep!
         {
@@ -241,7 +242,7 @@ int main(int argc, char **argv)
         }
 
         // Calculating the next time to do the measurements 
-        nextExecTimeMicros = getCurrentTimeMicros() + MEASUREMENT_DELAY_us;
+        nextExecTimeMicros = getCurrentTimeMicros() + measurement_time_us;
 
         // Calculating the time elapsed to perform one measurement from all the sensor since the starting timestamp
         time_offset_buffer[i] = getCurrentTimeMicros() - meas_starting_timestamp;
