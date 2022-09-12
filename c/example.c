@@ -13,7 +13,7 @@ u_int8_t measurement_timeout = 0;
 __u8 SENSOR_ADDRS[] = {0x40, 0x41, 0x44, 0x45};
 #define MEASUREMENT_DELAY_us 140 // To insure there is at least MEASUREMENT_DELAY_us of time between two measurements
 #define MEASUREMENT_TIME_us 140 // approximate time between measurements in reality (used to calculate number of samples)
-#define RETRY_NUM 1000 // Number of retries to configure a sensor
+#define RETRY_NUM 5 // Number of retries to configure a sensor
 
 // unit conversion code, just to make the conversion more obvious and self-documenting
 static long long SecondsToMicros(long secs) {return secs*1000000;}
@@ -43,9 +43,13 @@ int main(int argc, char **argv)
     float meas_time = 0.001;
     u_int8_t num_sensors = 1;
     char *filename = "current_measurements.csv";
+    u_int8_t current_enable = 0;
+    u_int8_t voltage_enable = 0;
+    u_int8_t sampling_time = CONVERSION_TIME_140us;
+    int usr_sampling_time = 140;
 
     // Parsing the input arguments
-    while ((c = getopt (argc, argv, "n:t:f:")) != -1)
+    while ((c = getopt (argc, argv, "n:t:f:cvs:")) != -1)
     {
         switch (c)
             {
@@ -57,11 +61,53 @@ int main(int argc, char **argv)
                     return 1;
                 }
                 break;
+            case 'c':
+                current_enable = 1;
+                break;
+            case 'v':
+                voltage_enable = 1;
+                break;
+
+            case 's':
+                usr_sampling_time = atoi(optarg);
+                switch (usr_sampling_time)
+                {
+                    case 140:
+                        sampling_time = CONVERSION_TIME_140us;
+                        break;
+                    case 204:
+                        sampling_time = CONVERSION_TIME_204us;
+                        break;
+                    case 332:
+                        sampling_time = CONVERSION_TIME_332us;
+                        break;
+                    case 588:
+                        sampling_time = CONVERSION_TIME_588us;
+                        break;
+                    case 1100:
+                        sampling_time = CONVERSION_TIME_1100us;
+                        break;
+                    case 2116:
+                        sampling_time = CONVERSION_TIME_2116us;
+                        break;
+                    case 4156:
+                        sampling_time = CONVERSION_TIME_4156us;
+                        break;
+                    case 8244:
+                        sampling_time = CONVERSION_TIME_8244us;
+                        break;
+                    default:
+                        usr_sampling_time = 140;
+                        printf("\033[0;33mSampling time input cannot be set. The default value of %d us is applied. \033[0m\n",usr_sampling_time);
+                        break;
+                }
+                break;
+
             case 'n':
                 num_sensors = round(atoi(optarg)); // Number of sensors used for measurements (by default it is set to 1)
                 if (num_sensors > sizeof(SENSOR_ADDRS)/sizeof(SENSOR_ADDRS[0]))
                 {
-                    printf("Addresses are not defined in the code properly\n");
+                    printf("Addresses are not defined in the code properly.\n");
                     return 1;
                 }
                 break;
@@ -83,8 +129,23 @@ int main(int argc, char **argv)
         }
 
     }
-    printf("Measurement time is set to %f seconds \n",meas_time);
-    printf("Number of active sensors is set to %d \n", num_sensors);
+    if (voltage_enable==0 && current_enable==0)
+        current_enable = 1;
+
+    printf("Measurement time is set to %f seconds. \n",meas_time);
+    printf("Number of active sensors is set to %d. \n", num_sensors);
+    if (voltage_enable==1)
+        printf("Voltage measurement is enabled.\n");
+    else
+        printf("\033[0;33mVoltage measurement is disabled. \033[0m \n");
+
+    if (current_enable==1)
+        printf("Current measurement is enabled.\n");
+    else
+        printf("\033[0;33mCurrent measurement is disabled. \033[0m \n");
+
+    
+    printf("Sampling time is set to %d microseconds. \n",usr_sampling_time);
 
     // Number of samples required for the measurements.
     long num_samples = round((meas_time*1000000)/MEASUREMENT_TIME_us);
@@ -99,15 +160,29 @@ int main(int argc, char **argv)
             return 1;
         }
 
-    // Definining the array that contains measured electricity current samples (register values)  
+    // Definining the array that contains measured voltage current samples (register values)  
     __u16 *current_buffer;
-    current_buffer = (__u16*) malloc(num_samples * ((long)num_sensors) *sizeof(__u16));
+    __u16 *voltage_buffer;
+    if (current_enable == 1)
+    {
+        current_buffer = (__u16*) malloc(num_samples * ((long)num_sensors) *sizeof(__u16));
+        if (current_buffer==NULL)
+            {
+                printf("Could not allocate memory for current_buffer.\n");
+                return 1;
+            }
+    }
 
-    if (time_offset_buffer==NULL)
-        {
-            printf("Could not allocate memory for current_buffer\n");
-            return 1;
-        }
+    if (voltage_enable == 1)
+    {
+        voltage_buffer = (__u16*) malloc(num_samples * ((long)num_sensors) *sizeof(__u16));
+        if (voltage_buffer==NULL)
+            {
+                printf("Could not allocate memory for voltage_buffer.\n");
+                return 1;
+            }
+    }
+
 
     // File ID of each sensor
     int *fd;
@@ -125,18 +200,18 @@ int main(int argc, char **argv)
         reachable[s] = 0;
         for (int r=0; r<RETRY_NUM; r++)
         {
-            if (ina260_config(fd[s])==0)
+            if (ina260_config(fd[s], current_enable, voltage_enable, sampling_time)==0)
             {
-                printf("Sensor %d succesfully configured.\n", s);
+                printf("\033[0;32mSensor %d succesfully configured. \033[0m \n", s);
                 reachable[s]=1;
                 break;
             }
-            usleep(5000);
+            usleep(10000);
         }
 
         if (reachable[s]==0)
         {
-            printf("Sensor %d is unreachable.\n", s);
+            printf("\033[31mSensor %d is unreachable.  \033[0m\n", s);
         }
 
     }
@@ -176,12 +251,16 @@ int main(int argc, char **argv)
         {
             if (reachable[s]==1)
             {                
-                current_buffer[i*((long)num_sensors)+(long)s] = current_read(fd[s]);
+                if (current_enable == 1)
+                    current_buffer[i*((long)num_sensors)+(long)s] = current_read(fd[s]);
+
+                if (voltage_enable == 1)
+                    voltage_buffer[i*((long)num_sensors)+(long)s] = voltage_read(fd[s]);
             }
         }
         if (user_interrupt==1)
         {
-            printf("Program was interrupted by user\n");
+            printf("Program was interrupted by user.\n");
             captured_samples = i;
             break;
         }
@@ -239,7 +318,13 @@ int main(int argc, char **argv)
     for (s=0; s<num_sensors; s++)
 
         if (reachable[s]==1)
-            fprintf(fpt,",Sensor %#02X current (mA)",SENSOR_ADDRS[s]);
+            {
+                if (current_enable == 1)
+                    fprintf(fpt,",Sensor %#02X current (mA)",SENSOR_ADDRS[s]);
+
+                if (voltage_enable == 1)
+                    fprintf(fpt,",Sensor %#02X voltage (mV)",SENSOR_ADDRS[s]);
+            }
     
     fprintf(fpt,"\n");
     long long time_of_day_us;
@@ -265,7 +350,10 @@ int main(int argc, char **argv)
         {
             if (reachable[s]==1)
             {
-                fprintf(fpt,",%d",reg_to_amp(current_buffer[i*((long)num_sensors)+((long)s)]));                
+                if (current_enable == 1)
+                    fprintf(fpt,",%d",reg_to_amp(current_buffer[i*((long)num_sensors)+((long)s)]));                
+                if (voltage_enable == 1)
+                    fprintf(fpt,",%d",reg_to_volt(voltage_buffer[i*((long)num_sensors)+((long)s)]));                
             }
         }
         fprintf(fpt,"\n");
@@ -273,11 +361,14 @@ int main(int argc, char **argv)
     fclose(fpt);
 
     clock_gettime(CLOCK_REALTIME, &w_et);
-    printf("Writing measruement to file is succesfully finished!\n");
+    printf("Writing measruements to file is succesfully finished!\n");
     printf("It took %ld seconds to write to file.\n",(w_et.tv_sec-w_st.tv_sec));
 
     free(time_offset_buffer);
-    free(current_buffer);
+    if (current_enable==1)
+        free(current_buffer);
+    if (voltage_enable==1)
+        free(voltage_buffer);
     free(fd);
     free(reachable);
 

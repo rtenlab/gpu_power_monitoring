@@ -65,7 +65,7 @@ __u16 bitclear(__u16 number, __u8 i)
 }
 
 
-__s8 ina260_config(int fd)
+__s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, __u8 converstion_time)
 {
 	/*
 	Configures the INA260 registers
@@ -79,7 +79,7 @@ __s8 ina260_config(int fd)
 	wr_data = bitset(wr_data, RST);
 	write_reg(fd, wr_addr, wr_data);
 
-	usleep(20);
+	usleep(20000);
 
 	// Check if device register reading is working
 	__u16 man_id = manufacturer_id(fd);
@@ -95,19 +95,52 @@ __s8 ina260_config(int fd)
 		if (VERBOSE) printf("Device is not reachable. Wrong Die ID\n");
 		status = status | (1<<2);
 	}
-		
 
 	// Set Confugation Register
 	wr_addr = REG_CONFIG;
 	wr_data = 0x0000;
+	
 	// Check Datasheet of INA260 for each of the bits
-	// Make sure to set the read-only bits!!! (CONF_ROX)
+	
+	// Setting the read-only bits! (CONF_ROX)
 	wr_data = bitset(wr_data, CONF_RO2);
 	wr_data = bitset(wr_data, CONF_RO1);
-	wr_data = bitset(wr_data, MODE0);
+	
+	// Enabling current and voltage based on user input
+	if (current_enable==1)
+		wr_data = bitset(wr_data, MODE0);
+
+	if (voltage_enable==1)
+		wr_data = bitset(wr_data, MODE1);
+	
+	// Enabling continuous conversion mode
 	wr_data = bitset(wr_data, MODE2);
+
+	// Setting conversion time
+	if(converstion_time & (1<<0))
+	{
+		bitset(wr_data, ISHCT0);
+		bitset(wr_data, VBUSCT0);
+	}
+
+	if(converstion_time & (1<<1))
+	{
+		bitset(wr_data, ISHCT1);
+		bitset(wr_data, VBUSCT1);
+	}
+
+	if(converstion_time & (1<<2))
+	{
+		bitset(wr_data, ISHCT2);
+		bitset(wr_data, VBUSCT2);
+	}
+
+	// Performing register write operation
 	write_reg(fd, wr_addr, wr_data);
-	usleep(20);
+
+	usleep(20000);
+
+	// Checking if the register is properly set
 	__u16 rd_data = read_reg(fd, wr_addr);
 	if (rd_data != wr_data)
 	{

@@ -60,7 +60,14 @@ Circuit detail:
 #define APOL 1
 #define LEN 0
 
-#define INA260_I2C_ADDRESS 0x40
+#define CONVERSION_TIME_140us 0x0
+#define CONVERSION_TIME_204us 0x1
+#define CONVERSION_TIME_332us 0x2
+#define CONVERSION_TIME_588us 0x3
+#define CONVERSION_TIME_1100us 0x4
+#define CONVERSION_TIME_2116us 0x5
+#define CONVERSION_TIME_4156us 0x6
+#define CONVERSION_TIME_8244us 0x7
 
 
 
@@ -71,7 +78,7 @@ __u16 manufacturer_id(int fd);
 __u16 die_id(int fd);
 __u16 bitset(__u16 number, __u8 i);
 __u16 bitclear(__u16 number, __u8 i);
-__s8 ina260_config(int fd);
+__s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, __u8 converstion_time);
 __u16 voltage_read(int fd);
 __s16 reg_to_volt(__u16 reg_voltage_raw);
 __u16 current_read(int fd);
