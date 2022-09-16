@@ -9,6 +9,8 @@
 #include <math.h>
 #define VERBOSE 0
 
+__u8 rd_err = 0;
+__u8 wr_err = 0;
 
 
 int i2c_init(__u8 dev_addr)
@@ -65,7 +67,7 @@ __u16 bitclear(__u16 number, __u8 i)
 }
 
 
-__s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, __u8 converstion_time)
+__s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, int converstion_time)
 {
 	/*
 	Configures the INA260 registers
@@ -77,7 +79,7 @@ __s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, __u8 conver
 	__u8 wr_addr = REG_CONFIG;
 	__u16 wr_data = 0x0000;
 	wr_data = bitset(wr_data, RST);
-	write_reg(fd, wr_addr, wr_data);
+	write_reg(fd, wr_addr, wr_data, &wr_err);
 
 	usleep(20000);
 
@@ -106,6 +108,7 @@ __s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, __u8 conver
 	wr_data = bitset(wr_data, CONF_RO2);
 	wr_data = bitset(wr_data, CONF_RO1);
 	
+	// 
 	// Enabling current and voltage based on user input
 	if (current_enable==1)
 		wr_data = bitset(wr_data, MODE0);
@@ -117,31 +120,59 @@ __s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, __u8 conver
 	wr_data = bitset(wr_data, MODE2);
 
 	// Setting conversion time
-	if(converstion_time & (1<<0))
+	switch (converstion_time)
 	{
-		bitset(wr_data, ISHCT0);
-		bitset(wr_data, VBUSCT0);
-	}
-
-	if(converstion_time & (1<<1))
-	{
-		bitset(wr_data, ISHCT1);
-		bitset(wr_data, VBUSCT1);
-	}
-
-	if(converstion_time & (1<<2))
-	{
-		bitset(wr_data, ISHCT2);
-		bitset(wr_data, VBUSCT2);
-	}
+		case 140:
+			break;
+		case 204:
+			bitset(wr_data, ISHCT0);
+			bitset(wr_data, VBUSCT0);
+			break;
+		case 332:
+			bitset(wr_data, ISHCT1);
+			bitset(wr_data, VBUSCT1);
+			break;
+		case 588:
+			bitset(wr_data, ISHCT0);
+			bitset(wr_data, VBUSCT0);
+			bitset(wr_data, ISHCT1);
+			bitset(wr_data, VBUSCT1);
+			break;
+		case 1100:
+			bitset(wr_data, ISHCT2);
+			bitset(wr_data, VBUSCT2);
+			break;
+		case 2116:
+			bitset(wr_data, ISHCT0);
+			bitset(wr_data, VBUSCT0);
+			bitset(wr_data, ISHCT2);
+			bitset(wr_data, VBUSCT2);
+			break;
+		case 4156:
+			bitset(wr_data, ISHCT1);
+			bitset(wr_data, VBUSCT1);
+			bitset(wr_data, ISHCT2);
+			bitset(wr_data, VBUSCT2);
+			break;
+		case 8244:
+			bitset(wr_data, ISHCT0);
+			bitset(wr_data, VBUSCT0);
+			bitset(wr_data, ISHCT1);
+			bitset(wr_data, VBUSCT1);
+			bitset(wr_data, ISHCT2);
+			bitset(wr_data, VBUSCT2);
+			break;
+		default:
+			break;
+	}	
 
 	// Performing register write operation
-	write_reg(fd, wr_addr, wr_data);
+	write_reg(fd, wr_addr, wr_data, &wr_err);
 
 	usleep(20000);
 
 	// Checking if the register is properly set
-	__u16 rd_data = read_reg(fd, wr_addr);
+	__u16 rd_data = read_reg(fd, wr_addr, &rd_err);
 	if (rd_data != wr_data)
 	{
 		if (VERBOSE) printf("Device configuration failed\n");
@@ -152,7 +183,7 @@ __s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, __u8 conver
 
 }
 
-__u16 read_reg(int fd, __u8 address)
+__u16 read_reg(int fd, __u8 address, __u8* err)
 {
 	/*
 		Reads a word from the device
@@ -163,9 +194,11 @@ __u16 read_reg(int fd, __u8 address)
 	Returns the register value (16 bits)
 	*/
 	__s32 res = i2c_smbus_read_word_data(fd, address);
+	*err = 0;
 	if (res < 0) 
 	{
-		if (VERBOSE) printf("Error in reading!\n");
+		if (VERBOSE) printf("Error in reading! Error code %08X \n",res);
+		*err = 1;
 		close(fd);
 	}
 
@@ -175,7 +208,7 @@ __u16 read_reg(int fd, __u8 address)
 	return res;
 }
 
-void write_reg(int fd, __u8 address, __u16 data)
+void write_reg(int fd, __u8 address, __u16 data, __u8* err)
 {
 	/*
         Writes a word to the device
@@ -184,10 +217,12 @@ void write_reg(int fd, __u8 address, __u16 data)
             address: register address
             data: resgister data (16 bits)
 	*/	
+	*err = 0;
 	__s32 res = i2c_smbus_write_word_data(fd, address, ((data<<8) & 0xFF00) | ((data>>8) & 0xFF));
 	if (res < 0) 
 	{
-		if (VERBOSE) printf("Error in writing!\n");
+		if (VERBOSE) printf("Error in writing! Error code %08X \n",res);
+		*err = 1;
 		close(fd);
 	}
 	if (VERBOSE) printf("Written address: %02X \t   Written data: %04X\n",address,data);
@@ -196,7 +231,8 @@ void write_reg(int fd, __u8 address, __u16 data)
 __u16 voltage_read(int fd)
 {
 	// Returns the voltage register of INA260 (Register 0x02)
-	return read_reg(fd, REG_BUS_VOLTAGE);
+	__u16 output = read_reg(fd, REG_BUS_VOLTAGE, &rd_err);
+	return rd_err?0x7FFF:output;
 }
 
 __s16 reg_to_volt(__u16 reg_voltage_raw)
@@ -214,7 +250,8 @@ __s16 reg_to_volt(__u16 reg_voltage_raw)
 __u16 current_read(int fd)
 {
 	// Returns the current register of INA260 (Register 0x01)
-	return read_reg(fd, REG_CURRENT);
+	__u16 output = read_reg(fd, REG_CURRENT, &rd_err);
+	return rd_err?0x7FFF:output;
 }
 
 __s16 reg_to_amp(__u16 reg_current_raw)
@@ -240,7 +277,8 @@ __s16 reg_to_amp(__u16 reg_current_raw)
 __u16 power_read(int fd)
 {
 	// Returns the power register of INA260 (Register 0x03)
-	return read_reg(fd, REG_POWER);
+	__u16 output = read_reg(fd, REG_POWER, &rd_err);
+	return rd_err?0x7FFF:output;
 }
 
 __u16 reg_to_watt(__u16 reg_power_raw)
@@ -261,7 +299,7 @@ __u16 manufacturer_id(int fd)
 	/*
     Returns the manufacturer ID - it should always be 0x5449
 	*/
-	return read_reg(fd, REG_MANUFACTURER_ID);
+	return read_reg(fd, REG_MANUFACTURER_ID, &rd_err);
 }
 
 __u16 die_id(int fd)
@@ -269,5 +307,5 @@ __u16 die_id(int fd)
 	/*
         Returns the die ID register - it should be 0x2270.
 	*/
-	return read_reg(fd, REG_DIE_ID);
+	return read_reg(fd, REG_DIE_ID, &rd_err);
 }

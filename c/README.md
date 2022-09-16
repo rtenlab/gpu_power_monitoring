@@ -11,13 +11,25 @@ make clean
 ```
 To run the example code after making:
 ```
-./example -t SIMULATION_TIME_s -n NUMBER_OF_SENSORS -f FILE_NAME
+./example
 ```
 
-Default values for ```SIMULATION_TIME_s``` , ```NUMBER_OF_SENSORS```, and ```FILE_NAME``` are 0.001 and 1, and current_measurements.csv respectively. For example to run the code for 3 sensors and simulation time of about 60 seconds and save in test.csv file:
+Paremeters for the example code:
+```
+-h             Display help and exit
+-t             Set entire measurement time (between 0.10 and 1800.00 seconds). Default: 1
+-c             Enables the current consumption measurement. Default: Enabled if neither of -c nor -v are selected 
+-v             Enables the voltage measurement. Default: Disabled
+-s             Set INA260 sampling time (valid values 140, 204, 332,
+               588, 1100, 2116, 4156, 8244 microseconds). Default: 140
+-n             Set number of sensors (between 1 and 4): Default: 1
+-f             Set file name to store measurements: Default: measurements.csv
+```
+
+For example, to run the code to measure current and voltage for 3 sensors with sampling rate of 1100 microseconds and entire measurement time of 60 seconds and save in test.csv file:
 
 ```
-./example -t 60 -n 3 -f test.csv
+./example -n 3 -c -v -f test.csv -s 1100 -t 60
 ```
 
 The user can interrupt the sensing by raising the ```SIGUSR1``` signal. In this case, the program stops the sensing and writes all the received data to the file. An example command in terminal to safely stop the program while the program is running

@@ -72,13 +72,13 @@ Circuit detail:
 
 
 int i2c_init(__u8 address);
-__u16 read_reg(int fd, __u8 address);
-void write_reg(int fd, __u8 address, __u16 data);
+__u16 read_reg(int fd, __u8 address, __u8* err);
+void write_reg(int fd, __u8 address, __u16 data, __u8* err);
 __u16 manufacturer_id(int fd);
 __u16 die_id(int fd);
 __u16 bitset(__u16 number, __u8 i);
 __u16 bitclear(__u16 number, __u8 i);
-__s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, __u8 converstion_time);
+__s8 ina260_config(int fd, __u8 current_enable, __u8 voltage_enable, int converstion_time);
 __u16 voltage_read(int fd);
 __s16 reg_to_volt(__u16 reg_voltage_raw);
 __u16 current_read(int fd);

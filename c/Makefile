@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-I.
+CFLAGS = -ggdb -I.
 DEPS = 
 OBJ = smbus.o INA260.o example.o
 EXTRA_LIBS=-lm
