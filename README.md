@@ -13,7 +13,7 @@ In order to achieve higher i2c speed, it is required to change the default i2c s
 sudo nano /boot/config.txt
 ```
 
-2. Find the line Find the line containing ```/boot/config.txt``` and add ```,i2c_arm_baudrate=2900000``` to the end of the line. Also add ```force_turbo=1``` line to the file. The resut would become like the following
+2. Find the line Find the line containing ```/boot/config.txt``` and add ```,i2c_arm_baudrate=1200000``` to the end of the line. Also add ```force_turbo=1``` line to the file. The resut would become like the following
 ```
 ...
 force_turbo=1
